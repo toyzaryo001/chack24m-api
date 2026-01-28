@@ -31,10 +31,8 @@ RUN npm ci --omit=dev
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist/
 
-# Environment
+# Environment - Railway will override PORT
 ENV NODE_ENV=production
-ENV PORT=3001
 
-EXPOSE 3001
-
-CMD ["node", "dist/app.js"]
+# Use npm start to run prisma db push + node
+CMD ["npm", "start"]
