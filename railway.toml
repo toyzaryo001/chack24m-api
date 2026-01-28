@@ -1,11 +1,9 @@
 [build]
-  builder = "NIXPACKS"
+  builder = "DOCKERFILE"
+  dockerfilePath = "Dockerfile"
 
 [deploy]
-  startCommand = "npm start"
   healthcheckPath = "/api/health"
-  healthcheckTimeout = 100
-
-[[services]]
-  name = "chack24m-api"
-  port = 3001
+  healthcheckTimeout = 120
+  restartPolicyType = "ON_FAILURE"
+  restartPolicyMaxRetries = 3
