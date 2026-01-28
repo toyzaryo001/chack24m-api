@@ -64,24 +64,23 @@ app.use(errorHandler);
 const PORT = parseInt(env.PORT);
 
 async function startServer() {
+    // Try to connect to database (don't crash if it fails)
     try {
-        // Connect to database
         await connectDatabase();
-
-        // Start server
-        app.listen(PORT, () => {
-            logger.info(`🚀 Server running on port ${PORT}`);
-            logger.info(`📍 Environment: ${env.NODE_ENV}`);
-            logger.info(`🔗 API URL: ${env.API_URL}`);
-
-            if (isDev) {
-                logger.info(`📚 Health: http://localhost:${PORT}/api/health`);
-            }
-        });
     } catch (error) {
-        logger.error('❌ Failed to start server:', error);
-        process.exit(1);
+        logger.warn('⚠️ Database connection failed, continuing without database:', error);
     }
+
+    // Start server regardless of database status
+    app.listen(PORT, '0.0.0.0', () => {
+        logger.info(`🚀 Server running on port ${PORT}`);
+        logger.info(`📍 Environment: ${env.NODE_ENV}`);
+        logger.info(`🔗 API URL: ${env.API_URL}`);
+
+        if (isDev) {
+            logger.info(`📚 Health: http://localhost:${PORT}/api/health`);
+        }
+    });
 }
 
 // Graceful shutdown
