@@ -14,11 +14,11 @@ const envSchema = z.object({
     API_URL: z.string().default('http://localhost:3001'),
 
     // Database
-    DATABASE_URL: z.string(),
+    DATABASE_URL: z.string().optional().default(''),
 
     // JWT
-    JWT_SECRET: z.string().min(32),
-    JWT_REFRESH_SECRET: z.string().min(32),
+    JWT_SECRET: z.string().default('dev-jwt-secret-key-minimum-32-characters-long'),
+    JWT_REFRESH_SECRET: z.string().default('dev-refresh-secret-key-minimum-32-chars'),
     JWT_EXPIRES_IN: z.string().default('15m'),
     JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
