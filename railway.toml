@@ -1,0 +1,11 @@
+[build]
+  builder = "NIXPACKS"
+
+[deploy]
+  startCommand = "npm start"
+  healthcheckPath = "/api/health"
+  healthcheckTimeout = 100
+
+[[services]]
+  name = "chack24m-api"
+  port = 3001

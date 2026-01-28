@@ -1,0 +1,361 @@
+// Prisma Schema for CHECK24M
+// Based on existing MySQL database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User & Authentication
+// ============================================
+
+model User {
+  id              Int       @id @default(autoincrement())
+  username        String    @unique @db.VarChar(50)
+  password        String    @db.VarChar(255)
+  phone           String?   @db.VarChar(20)
+  email           String?   @db.VarChar(100)
+  fullName        String?   @map("full_name") @db.VarChar(100)
+  lineId          String?   @map("line_id") @db.VarChar(100)
+  
+  // Bank Information
+  bankName        String?   @map("bank_name") @db.VarChar(50)
+  bankCode        String?   @map("bank_code") @db.VarChar(20)
+  bankAccount     String?   @map("bank_account") @db.VarChar(50)
+  
+  // Balance & Stats
+  balance         Decimal   @default(0) @db.Decimal(15, 2)
+  totalDeposit    Decimal   @default(0) @map("total_deposit") @db.Decimal(15, 2)
+  totalWithdraw   Decimal   @default(0) @map("total_withdraw") @db.Decimal(15, 2)
+  totalBet        Decimal   @default(0) @map("total_bet") @db.Decimal(15, 2)
+  totalWin        Decimal   @default(0) @map("total_win") @db.Decimal(15, 2)
+  turnover        Decimal   @default(0) @db.Decimal(15, 2)
+  
+  // Rank
+  rankId          Int?      @map("rank_id")
+  
+  // Affiliate
+  referrerId      Int?      @map("referrer_id")
+  referralCode    String?   @unique @map("referral_code") @db.VarChar(20)
+  
+  // Status
+  status          String    @default("active") @db.VarChar(20)
+  
+  // Session Management
+  sessionToken    String?   @map("session_token") @db.VarChar(100)
+  sessionDevice   String?   @map("session_device") @db.VarChar(100)
+  sessionUpdatedAt DateTime? @map("session_updated_at")
+  sessionKickReason String?  @map("session_kick_reason") @db.VarChar(50)
+  
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  lastLoginAt     DateTime? @map("last_login_at")
+  
+  // Relations
+  transactions    Transaction[]
+  betLogs         BetLog[]
+  
+  @@map("users")
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique @db.VarChar(50)
+  password  String   @db.VarChar(255)
+  name      String?  @db.VarChar(100)
+  email     String?  @db.VarChar(100)
+  role      String   @default("Admin") @db.VarChar(30)
+  roleId    Int?     @map("role_id")
+  status    String   @default("active") @db.VarChar(20)
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@map("admins")
+}
+
+model AdminRole {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  permissions Json?    @db.Json
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("admin_roles")
+}
+
+// ============================================
+// Transactions
+// ============================================
+
+model Transaction {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @map("user_id")
+  amount          Decimal   @db.Decimal(15, 2)
+  type            String    @map("transaction_type") @db.VarChar(20)
+  status          String    @default("pending") @db.VarChar(20)
+  transactionId   String?   @unique @map("transaction_id") @db.VarChar(100)
+  transactionDate DateTime? @map("transaction_date")
+  channel         String?   @db.VarChar(50)
+  slipUrl         String?   @map("slip_url") @db.VarChar(255)
+  adminRemark     String?   @map("admin_remark") @db.Text
+  promotionId     Int?      @map("promotion_id")
+  bonusAmount     Decimal?  @default(0) @map("bonus_amount") @db.Decimal(15, 2)
+  processedBy     Int?      @map("processed_by")
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  processedAt     DateTime? @map("processed_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  user            User      @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@map("transactions")
+}
+
+// ============================================
+// Games
+// ============================================
+
+model GameProvider {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(100)
+  nameEn      String?  @map("name_en") @db.VarChar(100)
+  logo        String?  @db.VarChar(255)
+  type        String?  @db.VarChar(50)
+  apiType     String?  @map("api_type") @db.VarChar(20) // betflix, nexus
+  status      String   @default("active") @db.VarChar(20)
+  sortOrder   Int      @default(0) @map("sort_order")
+  isHidden    Boolean  @default(false) @map("is_hidden")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  games       Game[]
+  
+  @@map("game_providers")
+}
+
+model Game {
+  id              Int      @id @default(autoincrement())
+  providerId      Int      @map("provider_id")
+  code            String   @db.VarChar(100)
+  name            String   @db.VarChar(200)
+  nameEn          String?  @map("name_en") @db.VarChar(200)
+  image           String?  @db.VarChar(255)
+  type            String?  @db.VarChar(50)
+  categoryId      Int?     @map("category_id")
+  isHot           Boolean  @default(false) @map("is_hot")
+  isNew           Boolean  @default(false) @map("is_new")
+  status          String   @default("active") @db.VarChar(20)
+  sortOrder       Int      @default(0) @map("sort_order")
+  rtp             Decimal? @db.Decimal(5, 2)
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  provider        GameProvider @relation(fields: [providerId], references: [id])
+  
+  @@unique([providerId, code])
+  @@index([categoryId])
+  @@map("games")
+}
+
+model GameCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  nameEn    String?  @map("name_en") @db.VarChar(100)
+  icon      String?  @db.VarChar(255)
+  sortOrder Int      @default(0) @map("sort_order")
+  status    String   @default("active") @db.VarChar(20)
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@map("game_categories")
+}
+
+model BetLog {
+  id          Int      @id @default(autoincrement())
+  odId        String?  @unique @map("od_id") @db.VarChar(100)
+  odTime      DateTime? @map("od_time")
+  userId      Int      @map("user_id")
+  provider    String?  @db.VarChar(50)
+  gameCode    String?  @map("game_code") @db.VarChar(100)
+  gameName    String?  @map("game_name") @db.VarChar(200)
+  bet         Decimal  @default(0) @db.Decimal(15, 2)
+  win         Decimal  @default(0) @db.Decimal(15, 2)
+  netWin      Decimal  @default(0) @map("net_win") @db.Decimal(15, 2)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([provider])
+  @@map("bet_logs")
+}
+
+// ============================================
+// Banking & Payments
+// ============================================
+
+model BankAccount {
+  id          Int      @id @default(autoincrement())
+  bankCode    String   @map("bank_code") @db.VarChar(20)
+  bankName    String   @map("bank_name") @db.VarChar(100)
+  accountNo   String   @map("account_no") @db.VarChar(50)
+  accountName String   @map("account_name") @db.VarChar(100)
+  type        String   @default("deposit") @db.VarChar(20) // deposit, withdraw, both
+  status      String   @default("active") @db.VarChar(20)
+  isDefault   Boolean  @default(false) @map("is_default")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("bank_accounts")
+}
+
+model TruewalletAccount {
+  id            Int      @id @default(autoincrement())
+  phoneNumber   String   @unique @map("phone_number") @db.VarChar(20)
+  pin           String?  @db.VarChar(6)
+  accessToken   String?  @map("access_token") @db.Text
+  referenceToken String? @map("reference_token") @db.Text
+  status        String   @default("inactive") @db.VarChar(20)
+  webhookSecret String?  @map("webhook_secret") @db.VarChar(255)
+  webhookEnabled Boolean @default(false) @map("webhook_enabled")
+  lastLoginAt   DateTime? @map("last_login_at")
+  lastCheckedAt DateTime? @map("last_checked_at")
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  @@map("truewallet_accounts")
+}
+
+model PaymentGateway {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(100)
+  type        String   @db.VarChar(20) // payin, payout, both
+  config      Json?    @db.Json
+  status      String   @default("active") @db.VarChar(20)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("payment_gateways")
+}
+
+// ============================================
+// Promotions & Marketing
+// ============================================
+
+model Promotion {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(200)
+  description   String?  @db.Text
+  image         String?  @db.VarChar(255)
+  type          String   @db.VarChar(50) // deposit_bonus, cashback, etc
+  bonusType     String   @map("bonus_type") @db.VarChar(20) // percent, fixed
+  bonusValue    Decimal  @map("bonus_value") @db.Decimal(15, 2)
+  minDeposit    Decimal? @map("min_deposit") @db.Decimal(15, 2)
+  maxBonus      Decimal? @map("max_bonus") @db.Decimal(15, 2)
+  turnoverMulti Decimal? @map("turnover_multi") @db.Decimal(5, 2)
+  status        String   @default("active") @db.VarChar(20)
+  startDate     DateTime? @map("start_date")
+  endDate       DateTime? @map("end_date")
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  @@map("promotions")
+}
+
+model Rank {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(100)
+  icon          String?  @db.VarChar(255)
+  minDeposit    Decimal  @default(0) @map("min_deposit") @db.Decimal(15, 2)
+  cashbackRate  Decimal  @default(0) @map("cashback_rate") @db.Decimal(5, 2)
+  bonusRate     Decimal  @default(0) @map("bonus_rate") @db.Decimal(5, 2)
+  sortOrder     Int      @default(0) @map("sort_order")
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  @@map("ranks")
+}
+
+model Banner {
+  id        Int      @id @default(autoincrement())
+  title     String?  @db.VarChar(200)
+  image     String   @db.VarChar(255)
+  link      String?  @db.VarChar(255)
+  position  String   @default("home") @db.VarChar(50)
+  sortOrder Int      @default(0) @map("sort_order")
+  status    String   @default("active") @db.VarChar(20)
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@map("banners")
+}
+
+model Announcement {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(200)
+  content   String   @db.Text
+  type      String   @default("info") @db.VarChar(20)
+  status    String   @default("active") @db.VarChar(20)
+  startDate DateTime? @map("start_date")
+  endDate   DateTime? @map("end_date")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@map("announcements")
+}
+
+// ============================================
+// Settings
+// ============================================
+
+model Setting {
+  id           Int      @id @default(autoincrement())
+  settingKey   String   @unique @map("setting_key") @db.VarChar(100)
+  settingValue String?  @map("setting_value") @db.Text
+  settingType  String?  @map("setting_type") @db.VarChar(20)
+  
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  @@map("settings")
+}
+
+model ActivityLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int?     @map("user_id")
+  adminId     Int?     @map("admin_id")
+  action      String   @db.VarChar(100)
+  description String?  @db.Text
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  userAgent   String?  @map("user_agent") @db.VarChar(255)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([userId])
+  @@index([adminId])
+  @@map("activity_logs")
+}
